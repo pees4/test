@@ -1517,9 +1517,11 @@ async function patch_kernel(kbase, kmem, p_ucred, restore_info) {
   kmem.write32(sysent_661.add(0x2c), 1);
 
   log("set the bits for JIT privs");
-  kmem.write64(p_ucred.add(0x60), new Int(0x00000000, 0x20000380)); // 0x2000038000000000
-  // cr_sceCaps[1] = 0x800000000000ff00
-  kmem.write64(p_ucred.add(0x68), new Int(0x0000ff00, 0x80000000)); // 0x800000000000ff00
+  // TODO: Just set the bits for JIT privs
+  // cr_sceCaps[0] // 0x2000038000000000
+  kmem.write64(p_ucred.add(0x60), -1); // 0xffffffffffffffff
+  // cr_sceCaps[1] // 0x800000000000ff00
+  kmem.write64(p_ucred.add(0x68), -1); // 0xffffffffffffffff
 
   const buf = await get_binary(patch_elf_loc);
   const patches = new View1(await buf);

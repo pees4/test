@@ -22,7 +22,7 @@ This table indicates firmware versions for which the *current version* of this r
 
 |               | PSFree    | Lapse      |
 |:--------------|:----------|:-----------|
-| PlayStation 4 | 8.00-9.60 | 8.00-9.60  |
+| PlayStation 4 | 7.00-9.60 | 7.00-9.60  |
 | PlayStation 5 | N/A       | N/A        |
 
 *Note: Support for other firmwares listed in the "Vulnerability Scope" table may, or may not, be actively being worked on or may have been supported in previous versions of this repository. Please check `CHANGELOG.md` for historical support.*
@@ -42,9 +42,4 @@ AGPL-3.0-or-later (see [LICENSE](LICENSE)). This repo belongs to the group `anon
 
 * anonymous for PS4 firmware kernel dumps
 * Al-Azif
-* janisslsm
 * Check the appropriate files for any **extra** contributors. Unless otherwise stated, everything here can also be credited to us.
-
-## Donations
-
-(Monero/XMR): **86Fk3X9AE94EGKidzRbvyiVgGNYD3qZnuKNq1ZbsomFWXHYm6TtAgz9GNGitPWadkS3Wr9uXoT29U1SfdMtJ7QNKQpW1CVS**

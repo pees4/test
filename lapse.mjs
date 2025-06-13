@@ -1445,9 +1445,6 @@ export async function kexploit() {
   try {
     if (sysi("setuid", 0) == 0) {
       log("kernel exploit succeeded!");
-      const payloadFile = getPayloadFile(version);
-      log(`loading payload for firmware ${hex(version)}: ${payloadFile}`);
-      runPayload(`./${payloadFile}`);
       return true;
     }
   } catch {

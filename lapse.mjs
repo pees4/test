@@ -72,18 +72,22 @@ const [is_ps4, version] = (() => {
 
 // Pemetaan versi firmware ke file payload
 const payloadMap = {
-  0x700: "ps4-hen-700-vtx.bin", // 7.00, 7.01, 7.02
+  0x700: "ps4-hen-700-vtx.bin", // 7.00
+  0x701: "ps4-hen-700-vtx.bin", // 7.01
+  0x702: "ps4-hen-700-vtx.bin", // 7.02
   0x750: "ps4-hen-750-vtx.bin", // 7.50
-  0x751: "ps4-hen-751-vtx.bin", // 7.51, 7.55
-  0x800: "ps4-hen-800-vtx.bin", // 8.00, 8.01
-  0x800: "ps4-hen-803-vtx.bin", // 8.03
+  0x751: "ps4-hen-751-vtx.bin", // 7.51
+  0x755: "ps4-hen-751-vtx.bin", // 7.55
+  0x800: "ps4-hen-800-vtx.bin", // 8.00
+  0x801: "ps4-hen-800-vtx.bin", // 8.01
+  0x803: "ps4-hen-803-vtx.bin", // 8.03
   0x850: "ps4-hen-850-vtx.bin", // 8.50
   0x852: "ps4-hen-852-vtx.bin", // 8.52
   0x900: "goldhen.bin", // 9.00
   0x903: "goldhen.bin", // 9.03
   0x904: "ps4-hen-904-vtx.bin", // 9.04
   0x950: "ps4-hen-950-vtx.bin", // 9.50
-  0x950: "ps4-hen-951-vtx.bin", // 9.51
+  0x951: "ps4-hen-950-vtx.bin", // 9.51
   0x960: "goldhen.bin", // 9.60
 };
 
@@ -95,24 +99,18 @@ function getPayloadFile(version) {
     return payloadMap[0x750];
   } else if (0x751 <= version && version < 0x800) {
     return payloadMap[0x751];
-  } else if (0x800 <= version && version < 0x801) {
+  } else if (0x800 <= version && version < 0x850) {
     return payloadMap[0x800];
-  } else if (0x801 <= version && version < 0x850) {
-    return payloadMap[0x801];
   } else if (0x850 <= version && version < 0x852) {
     return payloadMap[0x850];
   } else if (0x852 <= version && version < 0x900) {
     return payloadMap[0x852];
   } else if (0x900 <= version && version < 0x903) {
     return payloadMap[0x900];
-  } else if (0x903 <= version && version < 0x904) {
+  } else if (0x903 <= version && version < 0x950) {
     return payloadMap[0x903];
-  } else if (0x904 <= version && version < 0x950) {
-    return payloadMap[0x904];
-  } else if (0x950 <= version && version < 0x951) {
+  } else if (0x950 <= version && version < 0x960) {
     return payloadMap[0x950];
-  } else if (0x951 <= version && version < 0x960) {
-    return payloadMap[0x951];
   } else if (0x960 <= version && version < 0x1000) {
     return payloadMap[0x960];
   }
@@ -128,10 +126,8 @@ const fw_config = (() => {
       return fw_ps4_750;
     } else if (0x751 <= version && version < 0x800) {
       return fw_ps4_751;
-    } else if (0x800 <= version && version < 0x801) {
+    } else if (0x800 <= version && version < 0x850) {
       return fw_ps4_800;
-    } else if (0x801 <= version && version < 0x850) {
-      return fw_ps4_801;
     } else if (0x850 <= version && version < 0x852) {
       return fw_ps4_850;
     } else if (0x852 <= version && version < 0x900) {
@@ -142,10 +138,8 @@ const fw_config = (() => {
       return fw_ps4_903;
     } else if (0x904 <= version && version < 0x950) {
       return fw_ps4_904;
-    } else if (0x950 <= version && version < 0x951) {
+    } else if (0x950 <= version && version < 0x960) {
       return fw_ps4_950;
-    } else if (0x951 <= version && version < 0x960) {
-      return fw_ps4_951;
     } else if (0x960 <= version && version < 0x1000) {
       return fw_ps4_960;
     }

@@ -4,9 +4,9 @@ CACHE MANIFEST
 alert.mjs
 cache.html
 config.mjs
+goldhen.bin
 index.html
 lapse.mjs
-payload.bin
 psfree.mjs
 send.mjs
 fonts/LiberationMono-Regular.ttf

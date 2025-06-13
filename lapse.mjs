@@ -1920,10 +1920,48 @@ function runPayload(path) {
   };
   xhr.send();
 }
-
+/*
 kexploit().then((success) => {
   if (success) {
     runPayload("./payload.bin");
     // runBinLoader();
+  }
+});
+*/
+kexploit().then((success) => {
+  if (success) {
+    if (is_ps4) {
+      if ((0x900 <= version && version < 0x904) || (0x960 <= version && version < 1000)) {	// 9.00, 9.03, 9.60
+        runPayload("./goldhen.bin");
+      } else if (0x700 <= version && version < 0x701) {
+        runPayload("./ps4-hen-700-vtx.bin");
+      } else if (0x701 <= version && version < 0x702) {
+        runPayload("./ps4-hen-701-vtx.bin");
+      } else if (0x702 <= version && version < 0x750) {
+        runPayload("./ps4-hen-702-vtx.bin");
+      } else if (0x750 <= version && version < 0x751) {
+        runPayload("./ps4-hen-750-vtx.bin");
+      } else if (0x751 <= version && version < 0x755) {
+        runPayload("./ps4-hen-751-vtx.bin");
+      } else if (0x755 <= version && version < 0x800) {
+        runPayload("./ps4-hen-755-vtx.bin");
+      } else if (0x800 <= version && version < 0x801) {
+        runPayload("./ps4-hen-800-vtx.bin");
+      } else if (0x801 <= version && version < 0x803) {
+        runPayload("./ps4-hen-801-vtx.bin");
+      } else if (0x803 <= version && version < 0x850) {
+        runPayload("./ps4-hen-803-vtx.bin");
+      } else if (0x850 <= version && version < 0x852) {
+        runPayload("./ps4-hen-850-vtx.bin");
+      } else if (0x852 <= version && version < 0x900) {
+        runPayload("./ps4-hen-852-vtx.bin");
+      } else if (0x904 <= version && version < 0x950) {
+        runPayload("./ps4-hen-904-vtx.bin");
+      } else if (0x950 <= version && version < 0x951) {
+        runPayload("./ps4-hen-950-vtx.bin");
+      } else if (0x951 <= version && version < 0x960) {
+        runPayload("./ps4-hen-951-vtx.bin");
+      }
+    }
   }
 });

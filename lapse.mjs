@@ -1305,7 +1305,6 @@ async function patch_kernel(kbase, kmem, p_ucred, restore_info) {
 
   // Load and validate patch binary
   log("Loading kernel patch binary");
-  const max_size = 0x10000000;
   const buf = await get_binary(patch_elf_loc);
   const patches = new View1(buf);
   let map_size = patches.size;

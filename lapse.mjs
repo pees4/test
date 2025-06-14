@@ -87,35 +87,50 @@ const payloadMap = {
   0x903: "goldhen.bin", // 9.03
   0x904: "ps4-hen-904-vtx.bin", // 9.04
   0x950: "ps4-hen-950-vtx.bin", // 9.50
-  0x951: "ps4-hen-950-vtx.bin", // 9.51
+  0x951: "ps4-hen-951-vtx.bin", // 9.51
   0x960: "goldhen.bin", // 9.60
 };
 
 // Dapatkan nama file payload berdasarkan versi firmware
 function getPayloadFile(version) {
-  if (0x700 <= version && version < 0x750) {
+  if (0x700 <= version && version < 0x701) {
     return payloadMap[0x700];
+  } else if (0x701 <= version && version < 0x702) {
+    return payloadMap[0x701];
+  } else if (0x702 <= version && version < 0x750) {
+    return payloadMap[0x702];
   } else if (0x750 <= version && version < 0x751) {
     return payloadMap[0x750];
-  } else if (0x751 <= version && version < 0x800) {
+  } else if (0x751 <= version && version < 0x755) {
     return payloadMap[0x751];
-  } else if (0x800 <= version && version < 0x850) {
+  } else if (0x755 <= version && version < 0x800) {
+    return payloadMap[0x755];
+  } else if (0x800 <= version && version < 0x801) {
     return payloadMap[0x800];
+  } else if (0x801 <= version && version < 0x803) {
+    return payloadMap[0x801];
+  } else if (0x803 <= version && version < 0x850) {
+    return payloadMap[0x803];
   } else if (0x850 <= version && version < 0x852) {
     return payloadMap[0x850];
   } else if (0x852 <= version && version < 0x900) {
     return payloadMap[0x852];
   } else if (0x900 <= version && version < 0x903) {
     return payloadMap[0x900];
-  } else if (0x903 <= version && version < 0x950) {
+  } else if (0x903 <= version && version < 0x904) {
     return payloadMap[0x903];
-  } else if (0x950 <= version && version < 0x960) {
+  } else if (0x904 <= version && version < 0x950) {
+    return payloadMap[0x904];
+  } else if (0x950 <= version && version < 0x951) {
     return payloadMap[0x950];
+  } else if (0x951 <= version && version < 0x960) {
+    return payloadMap[0x951];
   } else if (0x960 <= version && version < 0x1000) {
     return payloadMap[0x960];
   }
   throw new RangeError(`no payload available for firmware: ${hex(version)}`);
 }
+    const payloadFile = getPayloadFile(version);
 
 // set per-console/per-firmware offsets
 const fw_config = (() => {
@@ -134,14 +149,10 @@ const fw_config = (() => {
       return fw_ps4_852;
     } else if (0x900 <= version && version < 0x903) {
       return fw_ps4_900;
-    } else if (0x903 <= version && version < 0x904) {
+    } else if (0x903 <= version && version < 0x950) {
       return fw_ps4_903;
-    } else if (0x904 <= version && version < 0x950) {
-      return fw_ps4_904;
-    } else if (0x950 <= version && version < 0x960) {
+     } else if (0x950 <= version && version < 0x1000) {
       return fw_ps4_950;
-    } else if (0x960 <= version && version < 0x1000) {
-      return fw_ps4_960;
     }
   } else {
     // TODO: PS5
@@ -1603,8 +1614,6 @@ function runPayload(path) {
 
 kexploit().then((success) => {
   if (success) {
-    const payloadFile = getPayloadFile(version);
-    log(`loading payload for firmware ${hex(version)}: ${payloadFile}`);
     runPayload(`./${payloadFile}`);
   }
 });

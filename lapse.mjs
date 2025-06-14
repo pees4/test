@@ -1496,8 +1496,8 @@ function array_from_address(addr, size) {
   return og_array;
 }
 
-const runBinLoader = () => {
-  const payload_buffer = chain.sysp("mmap", 0, 0x300000, 7, 0x1000, 0xffffffff, 0);
+function runBinLoader() {
+  const payload_buffer = chain.sysp("mmap", 0x0, 0x300000, 0x7, 0x1000, 0xffffffff, 0);
   const payload_loader = malloc32(0x1000);
   const loader_writer = payload_loader.backing;
   const loader_code = [
@@ -1513,11 +1513,15 @@ const runBinLoader = () => {
   loader_writer.set(loader_code);
 
   chain.sys("mprotect", payload_loader, 0x4000, PROT_READ | PROT_WRITE | PROT_EXEC);
-  const pthread = new Buffer(0x10);
-  sysi("mlock", payload_buffer, 0x300000);
-  call_nze("pthread_create", pthread, 0, payload_loader, payload_buffer);
-  log("Awaiting payload...");
-};
+  const pthread = malloc(0x10);
+
+  {
+    sysi("mlock", payload_buffer, 0x300000);
+    call_nze("pthread_create", pthread, 0x0, payload_loader, payload_buffer);
+  }
+
+  log("awaiting payload...");
+}
 
 const runPayload = (path) => {
   log(`Loading ${path}`);

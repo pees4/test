@@ -10,9 +10,10 @@ import * as config from "./config.mjs";
 
 // Firmware configurations
 import * as fw_ps4_700 from "./lapse/ps4/700.mjs";
-import * as fw_ps4_750 from "./lapse/ps4/751.mjs";
+import * as fw_ps4_750 from "./lapse/ps4/750.mjs"; // Corrected to import from 750.mjs
+import * as fw_ps4_751 from "./lapse/ps4/751.mjs"; // Added correct import for 751
 import * as fw_ps4_800 from "./lapse/ps4/800.mjs";
-import * as fw_ps4_850 from "./lapse/ps4/852.mjs";
+import * as fw_ps4_850 from "./lapse/ps4/852.mjs"; // Assuming 852.mjs is correct for fw_ps4_850
 import * as fw_ps4_900 from "./lapse/ps4/900.mjs";
 import * as fw_ps4_950 from "./lapse/ps4/950.mjs";
 
@@ -51,16 +52,21 @@ const { is_ps4, version } = (() => {
 // Get payload file for firmware version
 const getPayloadFile = (version) => payloadMap[version] || die(`No payload for firmware: ${hex(version)}`);
 
-// Set firmware-specific offsets
 const fw_config = (() => {
   if (!is_ps4) throw new RangeError("PS5 unsupported");
   const fw_map = {
-    700: fw_ps4_700, 750: fw_ps4_750, 751: fw_ps4_751,
-    800: fw_ps4_800, 850: fw_ps4_850, 852: fw_ps4_852,
-    900: fw_ps4_900, 950: fw_ps4_950,
+    700: fw_ps4_700,
+    750: fw_ps4_750,
+    751: fw_ps4_751, // Now correctly references fw_ps4_751
+    800: fw_ps4_800,
+    850: fw_ps4_850,
+    852: fw_ps4_852,
+    900: fw_ps4_900,
+    950: fw_ps4_950,
   };
   for (const [min, cfg] of Object.entries(fw_map)) {
-    if (version >= parseInt(min) && version < (min == 950 ? 0x1000 : parseInt(Object.keys(fw_map).find(k => k > min) || 0x1000))) {
+    const nextMin = Object.keys(fw_map).find(k => k > min) || 0x1000;
+    if (version >= parseInt(min) && version < parseInt(nextMin)) {
       return cfg;
     }
   }

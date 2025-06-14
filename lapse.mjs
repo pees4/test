@@ -1158,7 +1158,7 @@ function make_kernel_arw(pktopts_sds, dirty_sd, k100_addr, kernel_addr, sds) {
       this._verify_len(len);
       const { main_sd, worker_sd, addr_buf, data_buf, wpipe } = this;
       addr_buf.write64(0, this.pipe_addr);
-      ssockopt(main, IPPROTO_IPV6, IPV6_PKTINFO, addr_buf);
+      ssockopt(main_sd, IPPROTO_IPV6, IPV6_PKTINFO, addr_buf);
       data_buf.write64(0, 0);
       ssockopt(worker_sd, IPPROTO_IPV6, IPV6_PKTINFO, data_buf);
       addr_buf.write64(0, this.pipe_addr2);

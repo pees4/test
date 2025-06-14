@@ -1156,46 +1156,30 @@ function make_kernel_arw(pktopts_sds, dirty_sd, k100_addr, kernel_addr, sds) {
 
     copyin(src, dst, len) {
       this._verify_len(len);
-      const main = this.main_sd;
-      const worker = this.worker_sd;
-      const addr_buf = this.addr_buf;
-      const data_buf = this.data_buf;
-
+      const { main_sd, worker_sd, addr_buf, data_buf, wpipe } = this;
       addr_buf.write64(0, this.pipe_addr);
       ssockopt(main, IPPROTO_IPV6, IPV6_PKTINFO, addr_buf);
-
       data_buf.write64(0, 0);
-      ssockopt(worker, IPPROTO_IPV6, IPV6_PKTINFO, data_buf);
-
+      ssockopt(worker_sd, IPPROTO_IPV6, IPV6_PKTINFO, data_buf);
       addr_buf.write64(0, this.pipe_addr2);
-      ssockopt(main, IPPROTO_IPV6, IPV6_PKTINFO, addr_buf);
-
+      ssockopt(main_sd, IPPROTO_IPV6, IPV6_PKTINFO, addr_buf);
       addr_buf.write64(0, dst);
-      ssockopt(worker, IPPROTO_IPV6, IPV6_PKTINFO, addr_buf);
-
-      sysi("write", this.wpipe, src, len);
+      ssockopt(worker_sd, IPPROTO_IPV6, IPV6_PKTINFO, addr_buf);
+      sysi("write", wpipe, src, len);
     }
 
     copyout(src, dst, len) {
       this._verify_len(len);
-      const main = this.main_sd;
-      const worker = this.worker_sd;
-      const addr_buf = this.addr_buf;
-      const data_buf = this.data_buf;
-
+      const { main_sd, worker_sd, addr_buf, data_buf, rpipe } = this;
       addr_buf.write64(0, this.pipe_addr);
-      ssockopt(main, IPPROTO_IPV6, IPV6_PKTINFO, addr_buf);
-
+      ssockopt(main_sd, IPPROTO_IPV6, IPV6_PKTINFO, addr_buf);
       data_buf.write32(0, 0x40000000);
-      ssockopt(worker, IPPROTO_IPV6, IPV6_PKTINFO, data_buf);
-
+      ssockopt(worker_sd, IPPROTO_IPV6, IPV6_PKTINFO, data_buf);
       addr_buf.write64(0, this.pipe_addr2);
-      ssockopt(main, IPPROTO_IPV6, IPV6_PKTINFO, addr_buf);
-
+      ssockopt(main_sd, IPPROTO_IPV6, IPV6_PKTINFO, addr_buf);
       addr_buf.write64(0, src);
-      ssockopt(worker, IPPROTO_IPV6, IPV6_PKTINFO, addr_buf);
-
-      sysi("read", this.rpipe, dst, len);
+      ssockopt(worker_sd, IPPROTO_IPV6, IPV6_PKTINFO, addr_buf);
+      sysi("read", rpipe, dst, len);
     }
 
     _read(addr) {

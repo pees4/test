@@ -661,9 +661,13 @@ export async function kexploit() {
   await init();
   const init_t2 = performance.now();
 
-  if (sysi("setuid", 0) === 0) {
-    log("Kernel already patched");
-    return true;
+  try {
+    if (sysi("setuid", 0) == 0) {
+      log("kernel already patched, skipping kexploit");
+      return true;
+    }
+  } catch {
+    // Expected when not in an exploited state
   }
 
   const main_mask = new Long();

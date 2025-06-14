@@ -130,7 +130,6 @@ function getPayloadFile(version) {
   }
   throw new RangeError(`no payload available for firmware: ${hex(version)}`);
 }
-    const payloadFile = getPayloadFile(version);
 
 // set per-console/per-firmware offsets
 const fw_config = (() => {
@@ -1614,6 +1613,7 @@ function runPayload(path) {
 
 kexploit().then((success) => {
   if (success) {
-    //runPayload(`./${payloadFile}`);
+    const payloadFile = getPayloadFile(version);
+    runPayload(`./${payloadFile}`);
   }
 });
